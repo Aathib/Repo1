@@ -1,0 +1,39 @@
+def hyperopt_objective(params):
+    model = CatBoostClassifier(
+        l2_leaf_reg=int(params['l2_leaf_reg']),
+        learning_rate=params['learning_rate'],
+        iterations=3000,
+        eval_metric='AUC',
+        early_stopping_rounds=10,
+        random_seed=143,
+        verbose=True,
+        loss_function='Logloss',
+    )
+    
+    cv_data = cv(
+        Pool(X, y, cat_features=categorical_features_indices),
+        model.get_params()
+    )
+    best_AUC = np.max(cv_data['test-AUC-mean'])
+    
+    return 1 - best_AUC # as hyperopt minimises
+    
+    from numpy.random import RandomState
+
+params_space = {
+    'l2_leaf_reg': hyperopt.hp.qloguniform('l2_leaf_reg', 0, 2, 1),
+    'learning_rate': hp.loguniform('learning_rate',np.log(0.01), np.log(0.5)),
+}
+
+trials = hyperopt.Trials()
+
+best = hyperopt.fmin(
+    hyperopt_objective,
+    space=params_space,
+    algo=hyperopt.tpe.suggest,
+    max_evals=50,
+    trials=trials,
+    rstate=RandomState(123)
+)
+
+print(best)
